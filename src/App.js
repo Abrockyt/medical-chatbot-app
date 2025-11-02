@@ -348,31 +348,31 @@ const RoboticArm3D = ({ isDelivering, onDeliveryComplete }) => {
     };
 
     const animate = async () => {
-      await animateRotation(arm.segment1, 'y', 0, Math.PI / 2, 1000);
-      await animateRotation(arm.segment2, 'z', 0, -Math.PI / 3, 1000);
-      await animateRotation(arm.segment3, 'z', 0, -Math.PI / 4, 800);
-      
+      await animateRotation(arm.segment1, 'y', 0, -Math.PI / 1.8, 1000);
+      await animateRotation(arm.segment2, 'z', 0, Math.PI / 3.5, 1000);
+      await animateRotation(arm.segment3, 'z', 0, Math.PI / 6, 800);
+
       await new Promise(resolve => setTimeout(resolve, 300));
       medicine.position.set(0, 1.5, 0);
       arm.segment3.add(medicine);
-      
-      await animateRotation(arm.segment3, 'z', -Math.PI / 4, 0, 800);
-      await animateRotation(arm.segment2, 'z', -Math.PI / 3, 0, 1000);
-      await animateRotation(arm.segment1, 'y', Math.PI / 2, -Math.PI / 2.5, 1200);
-      await animateRotation(arm.segment2, 'z', 0, -Math.PI / 4, 1000);
-      await animateRotation(arm.segment3, 'z', 0, -Math.PI / 6, 800);
-      
+
+      await animateRotation(arm.segment3, 'z', Math.PI / 6, 0, 800);
+      await animateRotation(arm.segment2, 'z', Math.PI / 3.5, 0, 1000);
+      await animateRotation(arm.segment1, 'y', -Math.PI / 1.8, Math.PI / 1.8, 1500);
+      await animateRotation(arm.segment2, 'z', 0, Math.PI / 3.5, 1000);
+      await animateRotation(arm.segment3, 'z', 0, Math.PI / 6, 800);
+
       await new Promise(resolve => setTimeout(resolve, 500));
       if (sceneRef.current) {
         arm.segment3.remove(medicine);
-        medicine.position.set(12, 7, 0); // Position near person
+        medicine.position.set(12, 7, 0);
         sceneRef.current.add(medicine);
       }
-      
-      await animateRotation(arm.segment3, 'z', -Math.PI / 6, 0, 800);
-      await animateRotation(arm.segment2, 'z', -Math.PI / 4, 0, 1000);
-      await animateRotation(arm.segment1, 'y', -Math.PI / 2.5, 0, 1200);
-      
+
+      await animateRotation(arm.segment3, 'z', Math.PI / 6, 0, 800);
+      await animateRotation(arm.segment2, 'z', Math.PI / 3.5, 0, 1000);
+      await animateRotation(arm.segment1, 'y', Math.PI / 1.8, 0, 1200);
+
       onDeliveryComplete();
     };
 
