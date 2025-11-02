@@ -5,8 +5,7 @@ const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
 
-// Correctly import the class
-const { GoogleGenAI } = require('@google/genai');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const app = express();
@@ -28,19 +27,16 @@ if (!GEMINI_API_KEY) {
   console.log('[OK] GEMINI_API_KEY is loaded from .env file.');
 }
 
-// --- THIS IS THE NEW, CORRECTED CODE ---
-// Initialize the client. We pass an object.
 let genAI;
 try {
-  genAI = new GoogleGenAI(GEMINI_API_KEY);
-  console.log('[OK] GoogleGenAI client initialized.'); // <-- This is the NEW log message
+  genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+  console.log('[OK] GoogleGenerativeAI client initialized.');
 } catch (error) {
   console.error('\n\n--- [FATAL ERROR] ---');
-  console.error('Error during GoogleGenAI initialization:');
+  console.error('Error during GoogleGenerativeAI initialization:');
   console.error(error.message);
   console.error('-----------------------\n\n');
 }
-// ------------------------------------------
 
 // This is your API endpoint that the React app will call
 app.post('/api/chat', async (req, res) => {
@@ -56,18 +52,10 @@ app.post('/api/chat', async (req, res) => {
     const { message } = req.body;
     console.log('User message:', message);
     
-    // --- THIS IS THE NEW, CORRECT SYNTAX ---
-    // We get the model and generate content in one step.
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-    
-    // The prompt must be in this new format
-    const chatRequest = {
-      contents: [{ role: "user", parts: [{ text: message }] }]
-    };
 
     console.log('Sending prompt to Gemini...');
-    const result = await model.generateContent(chatRequest);
-    // ------------------------------------------
+    const result = await model.generateContent(message);
 
     const response = await result.response;
     console.log('Gemini response received.');
