@@ -1,100 +1,141 @@
-// This is your UPDATED backend server - server.js
-console.log('--- Server.js script starting ---');
+// FREE & FAST Backend server with Groq API - server.js
+console.log('--- Server.js starting with Groq AI ---');
 
 const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
 
-// Correctly import the class
-const { GoogleGenAI } = require('@google/genai');
-
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+const GROQ_API_KEY = process.env.GROQ_API_KEY;
 const app = express();
 const port = 3001;
 
-// Setup CORS
-app.use(cors({
-  origin: 'http://localhost:3000' // Your React app's port
-}));
+app.use(cors({ origin: 'http://localhost:3000' }));
 app.use(express.json());
 
-// API Key Check
-if (!GEMINI_API_KEY) {
-  console.error('\n\n--- [FATAL ERROR] ---');
-  console.error('GEMINI_API_KEY is not set in your .env file.');
-  console.error('Please check your .env file in the root folder.');
-  console.error('-----------------------\n\n');
+// Check API Key
+if (!GROQ_API_KEY) {
+  console.error('\n❌ GROQ_API_KEY not found in .env file!');
+  console.error('📝 Get your FREE key from: https://console.groq.com\n');
 } else {
-  console.log('[OK] GEMINI_API_KEY is loaded from .env file.');
+  console.log('✅ GROQ_API_KEY loaded successfully');
 }
 
-// --- THIS IS THE NEW, CORRECTED CODE ---
-// Initialize the client. We pass an object.
-let genAI;
-try {
-  genAI = new GoogleGenAI(GEMINI_API_KEY);
-  console.log('[OK] GoogleGenAI client initialized.'); // <-- This is the NEW log message
-} catch (error) {
-  console.error('\n\n--- [FATAL ERROR] ---');
-  console.error('Error during GoogleGenAI initialization:');
-  console.error(error.message);
-  console.error('-----------------------\n\n');
-}
-// ------------------------------------------
-
-// This is your API endpoint that the React app will call
+// Main chat endpoint
 app.post('/api/chat', async (req, res) => {
-  console.log('---');
-  console.log(`[${new Date().toLocaleTimeString()}] Received request for /api/chat`);
+  const timestamp = new Date().toLocaleTimeString();
+  console.log(`\n[${timestamp}] 📨 New chat request received`);
   
-  if (!genAI) {
-    console.error('Request failed because genAI client is not initialized.');
-    return res.status(500).json({ response: "Server Error: AI client not initialized. Check server logs." });
+  if (!GROQ_API_KEY) {
+    return res.status(500).json({ 
+      response: "⚠️ Server Error: GROQ_API_KEY not configured. Please check server logs." 
+    });
   }
 
   try {
     const { message } = req.body;
-    console.log('User message:', message);
+    console.log('💬 User message:', message);
     
-    // --- THIS IS THE NEW, CORRECT SYNTAX ---
-    // We get the model and generate content in one step.
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    console.log('🤖 Calling Groq AI...');
     
-    // The prompt must be in this new format
-    const chatRequest = {
-      contents: [{ role: "user", parts: [{ text: message }] }]
-    };
+    // Call Groq API
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${GROQ_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'llama-3.3-70b-versatile', // Fast & Smart model
+        messages: [
+          {
+            role: 'system',
+            content: 'You are a helpful medical assistant chatbot. Provide accurate, empathetic medical information and general health advice. Keep responses concise, clear, and easy to understand. Always remind users to consult healthcare professionals for serious medical concerns. Be friendly and supportive.'
+          },
+          {
+            role: 'user',
+            content: message
+          }
+        ],
+        temperature: 0.7,
+        max_tokens: 1024,
+        top_p: 0.9,
+      }),
+    });
 
-    console.log('Sending prompt to Gemini...');
-    const result = await model.generateContent(chatRequest);
-    // ------------------------------------------
-
-    const response = await result.response;
-    console.log('Gemini response received.');
-
-    // Check for safety blocks
-    if (response.promptFeedback && response.promptFeedback.blockReason) {
-      console.warn(`[SAFETY] Request blocked for reason: ${response.promptFeedback.blockReason}`);
-      return res.json({ response: "I'm sorry, I am not able to respond to that topic." });
+    if (!response.ok) {
+      const errorData = await response.text();
+      throw new Error(`Groq API returned status ${response.status}: ${errorData}`);
     }
 
-    if (response.candidates && response.candidates.length > 0) {
-      const text = response.text();
-      res.json({ response: text });
+    const data = await response.json();
+    console.log('✅ Response received from Groq');
+
+    // Extract AI response
+    if (data.choices && data.choices.length > 0) {
+      const aiResponse = data.choices[0].message.content;
+      
+      // Log token usage (helpful for monitoring)
+      if (data.usage) {
+        console.log(`📊 Tokens used: ${data.usage.total_tokens} (prompt: ${data.usage.prompt_tokens}, completion: ${data.usage.completion_tokens})`);
+      }
+      
+      res.json({ response: aiResponse });
     } else {
-      console.warn("[WARN] No candidate response from AI.");
-      res.status(500).json({ response: "I'm sorry, I couldn't generate a response for that." });
+      console.warn('⚠️ No response choices from Groq');
+      res.json({ 
+        response: "I apologize, I couldn't generate a proper response. Please try rephrasing your question." 
+      });
     }
   
-  } catch (chatError) {
-    console.error("--- CHAT ERROR ---");
-    console.error(chatError.message); 
-    console.error("------------------");
-    res.status(500).json({ response: `Server Error: ${chatError.message}` });
+  } catch (error) {
+    console.error('\n❌ CHAT ERROR:');
+    console.error(error.message);
+    
+    // Handle specific error types
+    if (error.message.includes('429')) {
+      console.error('⚠️ Rate limit exceeded');
+      res.status(429).json({ 
+        response: "I'm receiving too many requests right now. Please wait a few seconds and try again." 
+      });
+    } else if (error.message.includes('401') || error.message.includes('403')) {
+      console.error('🔑 Authentication error - check your API key');
+      res.status(500).json({ 
+        response: "Server configuration error. Please check the API key." 
+      });
+    } else if (error.message.includes('ENOTFOUND') || error.message.includes('ECONNREFUSED')) {
+      console.error('🌐 Network error');
+      res.status(500).json({ 
+        response: "Network error. Please check your internet connection and try again." 
+      });
+    } else {
+      res.status(500).json({ 
+        response: `An error occurred: ${error.message}. Please try again.` 
+      });
+    }
   }
 });
 
+// Health check endpoint
+app.get('/api/health', (req, res) => {
+  res.json({ 
+    status: 'ok',
+    ai_provider: 'Groq',
+    model: 'Llama 3.3 70B Versatile',
+    api_key_configured: !!GROQ_API_KEY,
+    free_tier: true,
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Start server
 app.listen(port, () => {
-  console.log(`\n--- Server is running on http://localhost:${port} ---`);
-  console.log('Waiting for requests...\n');
+  console.log('\n🚀 ================================');
+  console.log(`✅ Server running on http://localhost:${port}`);
+  console.log('🤖 AI Provider: Groq (FREE & FAST)');
+  console.log('🧠 Model: Llama 3.3 70B Versatile');
+  console.log('📡 Endpoints:');
+  console.log(`   - POST /api/chat (Main chat endpoint)`);
+  console.log(`   - GET  /api/health (Health check)`);
+  console.log('🎯 Ready to receive requests!');
+  console.log('================================\n');
 });

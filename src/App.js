@@ -416,24 +416,34 @@ export default function App() {
         const serverResponse = await fetch('http://localhost:3001/api/chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ message: input })
+          body: JSON.stringify({ message: input }),
+          timeout: 10000
         });
-        
+
+        if (!serverResponse.ok) {
+          throw new Error(`Server error: ${serverResponse.status}`);
+        }
+
         const data = await serverResponse.json();
-        
-        // Replace "Thinking..." with the real AI answer
-        setMessages(prev => {
-          const newMessages = [...prev];
-          newMessages[newMessages.length - 1] = { role: 'bot', content: data.response };
-          return newMessages;
-        });
+
+        if (data.response) {
+          setMessages(prev => {
+            const newMessages = [...prev];
+            newMessages[newMessages.length - 1] = { role: 'bot', content: data.response };
+            return newMessages;
+          });
+        } else {
+          throw new Error("No response from server");
+        }
 
       } catch (error) {
         console.error("Error fetching from server:", error);
-        // Replace "Thinking..." with an error message
         setMessages(prev => {
           const newMessages = [...prev];
-          newMessages[newMessages.length - 1] = { role: 'bot', content: "Sorry, I'm unable to connect to my brain right now." };
+          newMessages[newMessages.length - 1] = {
+            role: 'bot',
+            content: "⚠️ Backend server is not running. Please start the backend with 'npm run server' in a separate terminal."
+          };
           return newMessages;
         });
       }
